@@ -1,0 +1,11 @@
+dist/
+.env
+**/.DS_Store
+files/
+logs/
+*.dump
+database.json
+.vscode
+temp/
+report.html
+report.json

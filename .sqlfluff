@@ -1,0 +1,15 @@
+[sqlfluff]
+dialect = postgres
+templater = jinja
+sql_file_exts = .sql,.sql.j2,.dml,.ddl
+rules = core
+exclude_rules = L031, L034
+max_line_length = 120
+
+[sqlfluff:indentation]
+indented_joins = False
+indented_ctes = False
+indented_using_on = True
+indented_on_contents = False
+template_blocks_indent = True
+tab_space_size = 4
