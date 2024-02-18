@@ -1,68 +1,67 @@
 #!/bin/zsh
 
-conf_file="flyway.conf"
-
-if [ -f "$conf_file" ]; then
-    flyway_url=$(grep '^flyway.url=' "$conf_file" | cut -d'=' -f2-)
-    flyway_user=$(grep '^flyway.user=' "$conf_file" | cut -d'=' -f2-)
-    flyway_password=$(grep '^flyway.password=' "$conf_file" | cut -d'=' -f2-)
+if [ -f ".env" ]; then
+    source .env
 else
-    echo "Configuration file not found: $conf_file"
+    echo "Error: .env file not found."
     exit 1
 fi
 
-# Verify required configuration values are present
-if [ -z "$flyway_url" ] || [ -z "$flyway_user" ] || [ -z "$flyway_password" ]; then
-    echo "Missing configuration values in $conf_file"
+# Read environment variables
+PG_HOST=$PG_HOST
+PG_PORT=$PG_PORT
+PG_DB=$PG_DB
+FLYWAY_USER=$FLYWAY_USER
+FLYWAY_PASSWORD=$FLYWAY_PASSWORD
+
+# Verify required environment variables are present
+if [ -z "$PG_HOST" ] || [ -z "$PG_PORT" ] || [ -z "$PG_DB" ] || [ -z "$FLYWAY_USER" ] || [ -z "$FLYWAY_PASSWORD" ]; then
+    echo "Missing required environment variables"
     exit 1
 fi
 
-# Extract server, port, database from flyway.url
-server_port_db=$(echo "$flyway_url" | sed -n 's|jdbc:postgresql://\([^:/]*\):\([0-9]*\)/\([^?]*\)?*|\1 \2 \3|p')
-
-# Assign components to variables
-read -r server port db <<<"$server_port_db"
+db_url="jdbc:postgresql://$PG_HOST:$PG_PORT/$PG_DB"
 
 # Set the PostgreSQL from the flyway conf
-export PGPASSWORD="$flyway_password"
+export PGPASSWORD="$FLYWAY_PASSWORD"
 
 # SQL query to check if the database exists
-check_db_query="SELECT COUNT(*) FROM pg_database WHERE datname = '$db';"
-result=$(psql -h "$server" -p "$port" -d "postgres" -U "$flyway_user" -1 -t -c "$check_db_query" | tr -d '()[:space:]')
+check_db_query="SELECT COUNT(*) FROM pg_database WHERE datname = '$PG_DB';"
+result=$(psql -h "$PG_HOST" -p "$PG_PORT" -d "postgres" -U "$FLYWAY_USER" -1 -t -c "$check_db_query" | tr -d '()[:space:]')
 
 if [ $? -eq 0 ] && [ "$result" -eq 1 ]; then
-    echo "Database '$db' already exists. Dropping..."
+    echo "Database '$PG_DB' already exists. Dropping..."
 
     # Check for active sessions and terminate them
-    active_sessions=$(psql -h "$server" \
-                            -p "$port" \
+    active_sessions=$(psql -h "$PG_HOST" \
+                            -p "$PG_PORT" \
                             -d "postgres" \
-                            -U "$flyway_user" \
-                            -t -c "SELECT COUNT(*) FROM pg_stat_activity WHERE datname = '$db';")
+                            -U "$FLYWAY_USER" \
+                            -t -c "SELECT COUNT(*) FROM pg_stat_activity WHERE datname = '$PG_DB';")
 
     if [ "$active_sessions" -gt 0 ]; then
         echo "Terminating active sessions..."
-        psql -h "$server" \
-             -p "$port" \
+        psql -h "$PG_HOST" \
+             -p "$PG_PORT" \
              -d "postgres" \
-             -U "$flyway_user" \
-             -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE datname = '$db';" \
+             -U "$FLYWAY_USER" \
+             -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE datname = '$PG_DB';" \
              > /dev/null 2>&1
     fi
 
-    drop_db_query="DROP DATABASE $db;"
-    psql -h "$server" -p "$port" -d "postgres" -U "$flyway_user" -c "$drop_db_query"
+    drop_db_query="DROP DATABASE $PG_DB;"
+    psql -h "$PG_HOST" -p "$PG_PORT" -d "postgres" -U "$FLYWAY_USER" -c "$drop_db_query"
 
     if [ $? -eq 0 ]; then
-        echo "Database '$db' dropped successfully."
+        echo "Database '$PG_DB' dropped successfully."
     else
-        echo "Failed to drop the database '$db'."
+        echo "Failed to drop the database '$PG_DB'."
         exit 1
     fi
 fi
 
-create_db_query="CREATE DATABASE $db;"
-psql -h "$server" -p "$port" -d "postgres" -U "$flyway_user" -c "$create_db_query"
+create_db_query="CREATE DATABASE $PG_DB;"
+psql -h "$PG_HOST" -p "$PG_PORT" -d "postgres" -U "$FLYWAY_USER" -c "$create_db_query"
 
 if [ $? -eq 0 ]; then
     echo "Database created successfully."

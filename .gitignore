@@ -9,3 +9,5 @@ database.json
 temp/
 report.html
 report.json
+temp
+.venv

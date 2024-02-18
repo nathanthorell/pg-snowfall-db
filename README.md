@@ -2,6 +2,18 @@
 
 Basic PostgreSQL database to store snowfall data from [NOAA NCEI](https://www.ncei.noaa.gov/).  Uses Flyway for migrations.
 
+## Local Environment Configuration
+
+Example of expected environment variables:
+
+```bash
+PG_HOST=localhost
+PG_PORT=5432
+PG_DB=snowfall
+FLYWAY_USER=postgres
+FLYWAY_PASSWORD=YOUR_SECRET_PASSWORD_HERE
+```
+
 ## Create Local PostgreSQL Database
 
 - For local migration testing you will need a local Postgres DB instance
