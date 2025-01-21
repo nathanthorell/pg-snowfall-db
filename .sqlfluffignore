@@ -1,0 +1,7 @@
+# Ignore some directories
+temp/
+logs/
+
+# Misc
+**/.DS_Store
+.vscode
